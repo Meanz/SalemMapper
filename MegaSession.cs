@@ -260,13 +260,6 @@ namespace SalemMapper
                         if(in_tile.GlobalX == megaSessionTile.GlobalX &&
                             in_tile.GlobalY == megaSessionTile.GlobalY)
                         {
-                            //(Girlfriend Codes)
-                            //if person.poops = smells like shit
-                            //        then happy person
-                            //    if (life gives you lemons)
-                            //then (you gicve lemonade)
-                              
-                            
                             //Attempt to match this tile to
                             if(!Compare(in_tile, megaSessionTile.SessionTileRef, 90.0))
                             {

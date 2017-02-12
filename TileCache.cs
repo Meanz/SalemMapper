@@ -35,7 +35,7 @@ namespace SalemMapper
             {
                 //Make this entry the LRU
                 m_lru_cache.Remove(key);
-                m_lru_cache.AddFirst(key);
+                m_lru_cache.AddLast(key);
             }
 
             return bitmap;
@@ -102,14 +102,27 @@ namespace SalemMapper
         public static BitmapData FetchImageData(string path)
         {
             tile_cache_mutex.WaitOne();
-            Bitmap img = lru_cache.Get(path);
+            Bitmap img = null;
+            {
+                img = lru_cache.Get(path);
+            }
+
             if (img == null)
             {
                 img = (Bitmap)Image.FromFile(path);
-                if (img == null) return null;
-                m_active_bitmaps.Add(img);
-                lru_cache.Insert(path, img);
+                if (img == null)
+                {
+                    tile_cache_mutex.ReleaseMutex();
+                    return null;
+                }
+                {
+                    m_active_bitmaps.Add(img);
+                    lru_cache.Insert(path, img);
+                }
+
             }
+
+            //Check if this image was disposed somehow.
             BitmapData bd = null;
             bitmap_to_bitmap_data.TryGetValue(img, out bd);
             if (bd == null)
@@ -117,6 +130,7 @@ namespace SalemMapper
                 bd = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
                 bitmap_to_bitmap_data[img] = bd;
             }
+
             tile_cache_mutex.ReleaseMutex();
             return bd;
         }
