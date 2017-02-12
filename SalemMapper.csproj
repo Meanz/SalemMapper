@@ -17,7 +17,7 @@
     <PlatformTarget>AnyCPU</PlatformTarget>
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
-    <Optimize>true</Optimize>
+    <Optimize>false</Optimize>
     <OutputPath>bin\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
@@ -62,9 +62,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RenderTarget.cs" />
     <Compile Include="Session.cs" />
-    <Compile Include="SessionAnalyzer.cs" />
     <Compile Include="SessionCrawler.cs" />
     <Compile Include="Tile.cs" />
+    <Compile Include="TileCache.cs" />
     <Compile Include="Timing.cs" />
     <Compile Include="Vector2.cs" />
     <EmbeddedResource Include="Form1.resx">

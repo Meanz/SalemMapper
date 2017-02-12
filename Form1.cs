@@ -76,23 +76,68 @@ namespace SalemMapper
         /// <summary>
         /// 
         /// </summary>
+        private static volatile int m_thread_val = 0;
         public void ThreadProc()
         {
             while(m_running && !IsDisposed)
             {
                 //Grab a session
                 m_sessions_mutex.WaitOne();
-                Session session = m_unprocessed_sessions.First();
-                if(session == null)
+                Session session = null;
+                if (m_unprocessed_sessions.Count > 0)
                 {
-                    Console.WriteLine("No more unprocessed sessions... Weehee");
-                    return; //Kill
+                    session = m_unprocessed_sessions.First();
+                    m_unprocessed_sessions.RemoveFirst();
+                    m_sessions_mutex.ReleaseMutex();
                 }
-                m_unprocessed_sessions.RemoveFirst();
-                m_sessions_mutex.ReleaseMutex();
+                else
+                {
+                    m_sessions_mutex.ReleaseMutex();
+
+                    //Activate step two!
+                    //Wait for all threads to complete!
+                    MegaSession _ms = m_active_mega_session;
+                    //Memory barrier
+                    Interlocked.Increment(ref m_thread_val);
+                    while (m_thread_val != m_thread_pool.Count){}
+
+                    m_sessions_mutex.WaitOne();
+                    m_mega_session_mutex.WaitOne();
+                    m_process_later_mutex.WaitOne();
+                    if (process_later.Count > 0)
+                    {
+                        if (_ms == m_active_mega_session)
+                        {
+                            //Move all process later into process now!
+                            foreach (Session s in process_later)
+                            {
+                                m_unprocessed_sessions.AddLast(s);
+                            }
+
+                            //Fetch first as our session
+                            Session os = m_unprocessed_sessions.First();
+                            m_unprocessed_sessions.RemoveFirst();
+
+                            //Clear process later
+                            process_later.Clear();
+
+                            m_active_mega_session = new MegaSession();
+                            m_active_mega_session.SetOrigoSession(os);
+                            m_mega_sessions.Add(m_active_mega_session);
+
+                            m_thread_val = 0;
+                        }
+                    }
+                    m_process_later_mutex.ReleaseMutex();
+                    m_mega_session_mutex.ReleaseMutex();
+                    m_sessions_mutex.ReleaseMutex();
+
+                }
+
+                if (session == null) continue;
 
                 //Now process it
-                if(!m_active_mega_session.Analyze(session))
+                if (!m_active_mega_session.Analyze(session))
                 {
                     m_process_later_mutex.WaitOne();
                     process_later.Add(session);
@@ -102,9 +147,12 @@ namespace SalemMapper
                 m_update_text_mutex.WaitOne();
                 if(!status.IsDisposed && IsHandleCreated)
                 {
+                    int pgbValue = (100 - (100 * (m_unprocessed_sessions.Count + process_later.Count) / m_sessions.Count));
+
                     status.BeginInvoke((MethodInvoker)(() => lblUnproc.Text = "Unprocessed Sessions: " + m_unprocessed_sessions.Count));
                     status.BeginInvoke((MethodInvoker)(() => lblBackproc.Text = "Process Later: " + process_later.Count));
-                    status.BeginInvoke((MethodInvoker)(() => pgbTotal.Value = (100 - (100 * (m_unprocessed_sessions.Count + process_later.Count) / m_sessions.Count))));
+                    status.BeginInvoke((MethodInvoker)(() => pgbTotal.Value = pgbValue));
+                   // this.BeginInvoke((MethodInvoker)(() => Refresh()));
                 }
                 m_update_text_mutex.ReleaseMutex();
 
@@ -152,6 +200,8 @@ namespace SalemMapper
 
         public Form1()
         {
+            TileCache.Initialize();
+
             this.DoubleBuffered = true;
             InitializeComponent();
 

@@ -5,51 +5,118 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Drawing.Imaging;
 
 namespace SalemMapper
 {
+
+    [Serializable]
+    class SessionHistoryEntry
+    {
+        /// <summary>
+        /// The session name
+        /// </summary>
+        public string Session;
+
+        /// <summary>
+        /// The X coordinate in the session
+        /// </summary>
+        public int SessionX;
+
+        /// <summary>
+        /// The Y coordinate in the session
+        /// </summary>
+        public int SessionY;
+    }
+
+    [Serializable]
+    class MegaSessionTile
+    {
+
+        /// <summary>
+        /// The different revisions of this mega session tile
+        /// </summary>
+        public List<SessionHistoryEntry> SessionHistory = new List<SessionHistoryEntry>();
+
+        /// <summary>
+        /// The name of the current session for this mega session tile
+        /// </summary>
+        public string CurrentSession;
+
+        /// <summary>
+        /// Coordinates in the session
+        /// </summary>
+        public int LocalX, LocalY;
+
+        /// <summary>
+        /// Coordinates in our map system
+        /// </summary>
+        public int GlobalX, GlobalY;
+
+        /// <summary>
+        /// The tile.png file path
+        /// </summary>
+        public string TileFilePath;
+
+        /// <summary>
+        /// The reference to this tile's session
+        /// </summary>
+        [NonSerialized]
+        public Session SessionRef;
+
+        /// <summary>
+        /// The reference to this tile
+        /// </summary>
+        [NonSerialized]
+        public Tile SessionTileRef;
+
+        [NonSerialized]
+        private Image m_image;
+        public Image Image {
+            get
+            {
+                if(m_image == null)
+                {
+                    m_image = Image.FromFile(TileFilePath);
+                }
+                return m_image;
+            }
+        }
+    }
+
+    [Serializable]
     class MegaSession
     {
         /// <summary>
         /// 
         /// </summary>
-        private List<Tile> m_tiles;
+        private List<MegaSessionTile> m_tiles;
 
         /// <summary>
         /// 
         /// </summary>
+        [NonSerialized]
         private Mutex m_tile_mutex;
 
         /// <summary>
         /// 
         /// </summary>
-        private volatile int m_tile_lock;
-
-        /// <summary>
-        /// 
-        /// </summary>
+        [NonSerialized]
         private RenderTarget m_render_target;
 
         /// <summary>
         /// The bounds of this mega session
         /// </summary>
+        [NonSerialized]
         private Rectangle m_bounds;
-
-        /// <summary>
-        /// Whether or not this session is dirty
-        /// </summary>
-        private bool m_is_dirty;
-
-        private HighResolutionTimer m_timer = new HighResolutionTimer();
 
         /// <summary>
         /// Constructs a new mega session
         /// </summary>
         public MegaSession()
         {
-            m_tiles = new List<Tile>();
-            m_tile_mutex = new Mutex();
-            m_tile_lock = 0;
+            m_tiles = new List<MegaSessionTile>();
+            m_tile_mutex = new Mutex();     
             m_render_target = new RenderTarget();
         }
 
@@ -62,8 +129,70 @@ namespace SalemMapper
             {
                 tile.GlobalX = tile.LocalX;
                 tile.GlobalY = tile.LocalY;
-                m_tiles.Add(tile);
+
+                MegaSessionTile mst = new MegaSessionTile();
+                mst.CurrentSession = session.Name;
+                mst.GlobalX = tile.GlobalX;
+                mst.GlobalY = tile.GlobalY;
+                mst.LocalX = tile.LocalX;
+                mst.LocalY = tile.LocalY;
+                mst.TileFilePath = tile.TileFilePath;
+
+                SessionHistoryEntry history_entry = new SessionHistoryEntry();
+                history_entry.SessionX = 0;
+                history_entry.SessionY = 0;
+                history_entry.Session = session.Name;
+                mst.SessionHistory.Add(history_entry);
+
+                //Non serializeable
+                mst.SessionRef = session;
+                mst.SessionTileRef = tile;
+
+                m_tiles.Add(mst);
             }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="a"></param>
+        /// <param name="b"></param>
+        /// <param name="threshold"></param>
+        /// <returns></returns>
+        private bool Compare(Tile a, Tile b, double threshold)
+        {
+            BitmapData bda = a.GetBitmapData();
+            BitmapData bdb = b.GetBitmapData();
+            int equality = 0;
+            unsafe
+            {
+                byte* ptr1 = (byte*)bda.Scan0.ToPointer();
+                byte* ptr2 = (byte*)bdb.Scan0.ToPointer();
+                int width = bda.Width * 4;
+                for (int y = 0; y < bda.Height; y++)
+                {
+                    for (int x = 0; x < bda.Width; x++)
+                    {
+                        int argb_a = *((int*)ptr1);
+                        int argb_b = *((int*)ptr2);
+                        if (argb_a == argb_b)
+                        {
+                            equality++;
+                        }
+                        ptr1 += 4;
+                        ptr2 += 4;
+                    }
+                    ptr1 += bda.Stride - width;
+                    ptr2 += bdb.Stride - width;
+                }
+            }
+            double equality_perc = (equality / (double)(bda.Width * bda.Height)) * 100;
+            if (equality_perc > threshold)
+            {
+                return true;
+            }
+            return false;
+
         }
 
         /// <summary>
@@ -75,30 +204,37 @@ namespace SalemMapper
             bool was_match = false;
             int session_x = 0;
             int session_y = 0;
+            int match_tile_x = 0;
+            int match_tile_y = 0;
 
             //Make a local copy of the tile list
-            List<Tile> our_tiles = new List<Tile>();
-
             m_tile_mutex.WaitOne();
-            our_tiles.AddRange(m_tiles);
+            MegaSessionTile[] our_tiles = new MegaSessionTile[m_tiles.Count];
+            int idx = 0;
+            foreach(MegaSessionTile mst in m_tiles)
+            {
+                our_tiles[idx++] = mst;
+            }
             m_tile_mutex.ReleaseMutex();
 
             //Match tiles!
-            m_timer.Start();
             foreach(Tile in_session_tile in in_session.Tiles)
             {
-                foreach(Tile session_tile in our_tiles)
+                foreach(MegaSessionTile megaSessionTile in our_tiles)
                 {
-                    if(SessionAnalyzer.Matches(in_session_tile, session_tile))
+                    if(Compare(in_session_tile, megaSessionTile.SessionTileRef, 90.0))
                     {
                         //We have a match!
-                        in_session_tile.GlobalX = session_tile.GlobalX;
-                        in_session_tile.GlobalY = session_tile.GlobalY;
+                        in_session_tile.GlobalX = megaSessionTile.GlobalX;
+                        in_session_tile.GlobalY = megaSessionTile.GlobalY;
 
                         //if this tile is -1, -2
                         //Then our session global x would be (other_x + (1)) or (other_x - (-1))
-                        session_x = session_tile.GlobalX - in_session_tile.LocalX;
-                        session_y = session_tile.GlobalY - in_session_tile.LocalY;
+                        session_x = megaSessionTile.GlobalX - in_session_tile.LocalX;
+                        session_y = megaSessionTile.GlobalY - in_session_tile.LocalY;
+
+                        match_tile_x = in_session_tile.LocalX;
+                        match_tile_y = in_session_tile.LocalY;
 
                         was_match = true;
                         break;
@@ -110,48 +246,80 @@ namespace SalemMapper
                 }
             }
 
-            if (!was_match)
-            {
-                //Free our resources
-                foreach(Tile tile in in_session.Tiles)
-                {
-                    tile.DisposeCopy();
-                }
-            }
-
-            m_timer.Stop();
-           // Console.WriteLine("Comparison: " + m_timer.ElapsedMilliseconds + "ms");
-            m_timer.Reset();
-
             if(was_match)
             {
+                //Also attempt to look at neighbours
+                foreach(Tile in_tile in in_session.Tiles)
+                {
+                    in_tile.GlobalX = session_x + in_tile.LocalX;
+                    in_tile.GlobalY = session_y + in_tile.LocalY;
+
+                    //Find that tiles in our tiles repo
+                    foreach (MegaSessionTile megaSessionTile in our_tiles)
+                    {
+                        if(in_tile.GlobalX == megaSessionTile.GlobalX &&
+                            in_tile.GlobalY == megaSessionTile.GlobalY)
+                        {
+                            //(Girlfriend Codes)
+                            //if person.poops = smells like shit
+                            //        then happy person
+                            //    if (life gives you lemons)
+                            //then (you gicve lemonade)
+                              
+                            
+                            //Attempt to match this tile to
+                            if(!Compare(in_tile, megaSessionTile.SessionTileRef, 90.0))
+                            {
+                                return false;
+                            }
+                        }
+                    }
+                }
+
                 m_tile_mutex.WaitOne();
-                Interlocked.Add(ref m_tile_lock, 1);
                 foreach (Tile tile in in_session.Tiles)
                 {
                     tile.GlobalX = session_x + tile.LocalX;
                     tile.GlobalY = session_y + tile.LocalY;
 
                     //T_T
-                    List<Tile> to_remove = new List<Tile>();
-                    foreach(Tile mega_tile in m_tiles)
+                    List<MegaSessionTile> to_remove = new List<MegaSessionTile>();
+                    foreach(MegaSessionTile megaSessionTile in m_tiles)
                     {
-                        if(mega_tile.GlobalX == tile.GlobalX &&
-                            mega_tile.GlobalY == tile.GlobalY)
+                        if(megaSessionTile.GlobalX == tile.GlobalX &&
+                            megaSessionTile.GlobalY == tile.GlobalY)
                         {
-                            to_remove.Add(mega_tile);
+                            to_remove.Add(megaSessionTile);
                         }
                     }
-                    foreach(Tile remove_tile in to_remove)
+                    foreach(MegaSessionTile remove_tile in to_remove)
                     {
-                        remove_tile.DisposeCopy();
                         m_tiles.Remove(remove_tile);
                     }
-                    m_tiles.Add(tile);
+
+                    MegaSessionTile mst = new MegaSessionTile();
+                    mst.CurrentSession = in_session.Name;
+                    mst.GlobalX = tile.GlobalX;
+                    mst.GlobalY = tile.GlobalY;
+                    mst.LocalX = tile.LocalX;
+                    mst.LocalY = tile.LocalY;
+                    mst.TileFilePath = tile.TileFilePath;
+
+                    SessionHistoryEntry history_entry = new SessionHistoryEntry();
+                    history_entry.SessionX = 0;
+                    history_entry.SessionY = 0;
+                    mst.SessionHistory.Add(history_entry);
+
+                    //Non serializeable
+                    mst.SessionRef = in_session;
+                    mst.SessionTileRef = tile;
+
+                    m_tiles.Add(mst);
                 }
-                Interlocked.Decrement(ref m_tile_lock);
                 m_tile_mutex.ReleaseMutex();
             }
+
+            
 
             return was_match;
         }
@@ -172,14 +340,10 @@ namespace SalemMapper
                 session.Render(pos, g);
             }
             */
-            if(m_tile_lock > 0)
-            {
-                return;
-            }
 
             m_tile_mutex.WaitOne();
 
-            foreach (Tile t in m_tiles)
+            foreach (MegaSessionTile t in m_tiles)
             {
                 Image image = t.Image;
                 if (image != null)

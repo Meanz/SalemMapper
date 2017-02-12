@@ -20,7 +20,7 @@ namespace SalemMapper
                 Session session = new Session();
                 session.Name = file_name;
                 session.Path = file;
-                session.Tiles = CrawlDirectory(session.Path);
+                session.Tiles = CrawlDirectory(session, session.Path);
                 sessions.Add(session);
             }
             return sessions;
@@ -31,7 +31,7 @@ namespace SalemMapper
         /// </summary>
         /// <param name="directory"></param>
         /// <returns></returns>
-        public static List<Tile> CrawlDirectory(string directory)
+        public static Tile[] CrawlDirectory(Session session, string directory)
         {
             List<Tile> tiles = new List<Tile>();
             IEnumerable<string> files = Directory.EnumerateFiles(directory);
@@ -53,12 +53,12 @@ namespace SalemMapper
                     Tile tile = new Tile();
                     tile.LocalX = int.Parse(x);
                     tile.LocalY = int.Parse(y);
-                    tile.TileFilePath = file;
+                    tile.Session = session;
                     tiles.Add(tile);
                     //Console.WriteLine("Added tile " + file_name);
                 }
             }
-            return tiles;
+            return tiles.ToArray();
         }
 
     }
