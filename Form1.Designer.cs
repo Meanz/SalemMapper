@@ -31,11 +31,15 @@ namespace SalemMapper
         private void InitializeComponent()
         {
             this.status = new System.Windows.Forms.StatusStrip();
-            this.pnlMap = new SalemMapper.MapPanel();
-            this.lblUnproc = new System.Windows.Forms.ToolStripStatusLabel();
             this.pgbTotal = new System.Windows.Forms.ToolStripProgressBar();
+            this.lblUnproc = new System.Windows.Forms.ToolStripStatusLabel();
             this.lblBackproc = new System.Windows.Forms.ToolStripStatusLabel();
+            this.pnlMap = new SalemMapper.MapPanel();
+            this.menuStrip1 = new System.Windows.Forms.MenuStrip();
+            this.fileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.layersToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.status.SuspendLayout();
+            this.menuStrip1.SuspendLayout();
             this.SuspendLayout();
             // 
             // status
@@ -50,6 +54,23 @@ namespace SalemMapper
             this.status.TabIndex = 0;
             this.status.Text = "statusStrip1";
             // 
+            // pgbTotal
+            // 
+            this.pgbTotal.Name = "pgbTotal";
+            this.pgbTotal.Size = new System.Drawing.Size(100, 16);
+            // 
+            // lblUnproc
+            // 
+            this.lblUnproc.Name = "lblUnproc";
+            this.lblUnproc.Size = new System.Drawing.Size(118, 17);
+            this.lblUnproc.Text = "toolStripStatusLabel1";
+            // 
+            // lblBackproc
+            // 
+            this.lblBackproc.Name = "lblBackproc";
+            this.lblBackproc.Size = new System.Drawing.Size(118, 17);
+            this.lblBackproc.Text = "toolStripStatusLabel2";
+            // 
             // pnlMap
             // 
             this.pnlMap.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
@@ -63,22 +84,28 @@ namespace SalemMapper
             this.pnlMap.Size = new System.Drawing.Size(646, 523);
             this.pnlMap.TabIndex = 0;
             // 
-            // lblUnproc
+            // menuStrip1
             // 
-            this.lblUnproc.Name = "lblUnproc";
-            this.lblUnproc.Size = new System.Drawing.Size(118, 17);
-            this.lblUnproc.Text = "toolStripStatusLabel1";
+            this.menuStrip1.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.fileToolStripMenuItem,
+            this.layersToolStripMenuItem});
+            this.menuStrip1.Location = new System.Drawing.Point(0, 0);
+            this.menuStrip1.Name = "menuStrip1";
+            this.menuStrip1.Size = new System.Drawing.Size(670, 24);
+            this.menuStrip1.TabIndex = 1;
+            this.menuStrip1.Text = "menuStrip1";
             // 
-            // pgbTotal
+            // fileToolStripMenuItem
             // 
-            this.pgbTotal.Name = "pgbTotal";
-            this.pgbTotal.Size = new System.Drawing.Size(100, 16);
+            this.fileToolStripMenuItem.Name = "fileToolStripMenuItem";
+            this.fileToolStripMenuItem.Size = new System.Drawing.Size(37, 20);
+            this.fileToolStripMenuItem.Text = "File";
             // 
-            // lblBackproc
+            // layersToolStripMenuItem
             // 
-            this.lblBackproc.Name = "lblBackproc";
-            this.lblBackproc.Size = new System.Drawing.Size(118, 17);
-            this.lblBackproc.Text = "toolStripStatusLabel2";
+            this.layersToolStripMenuItem.Name = "layersToolStripMenuItem";
+            this.layersToolStripMenuItem.Size = new System.Drawing.Size(52, 20);
+            this.layersToolStripMenuItem.Text = "Layers";
             // 
             // Form1
             // 
@@ -86,11 +113,15 @@ namespace SalemMapper
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(670, 547);
             this.Controls.Add(this.status);
+            this.Controls.Add(this.menuStrip1);
             this.Controls.Add(this.pnlMap);
+            this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
             this.Text = "Form1";
             this.status.ResumeLayout(false);
             this.status.PerformLayout();
+            this.menuStrip1.ResumeLayout(false);
+            this.menuStrip1.PerformLayout();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -103,6 +134,9 @@ namespace SalemMapper
         private ToolStripProgressBar pgbTotal;
         private ToolStripStatusLabel lblUnproc;
         private ToolStripStatusLabel lblBackproc;
+        private MenuStrip menuStrip1;
+        private ToolStripMenuItem fileToolStripMenuItem;
+        private ToolStripMenuItem layersToolStripMenuItem;
     }
 }
 

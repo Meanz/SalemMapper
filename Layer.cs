@@ -30,7 +30,7 @@ namespace SalemMapper
     }
 
     [Serializable]
-    class MegaSessionTile
+    class LayerTile
     {
 
         /// <summary>
@@ -85,12 +85,12 @@ namespace SalemMapper
     }
 
     [Serializable]
-    class MegaSession
+    class Layer
     {
         /// <summary>
         /// 
         /// </summary>
-        private List<MegaSessionTile> m_tiles;
+        private List<LayerTile> m_tiles;
 
         /// <summary>
         /// 
@@ -113,9 +113,9 @@ namespace SalemMapper
         /// <summary>
         /// Constructs a new mega session
         /// </summary>
-        public MegaSession()
+        public Layer()
         {
-            m_tiles = new List<MegaSessionTile>();
+            m_tiles = new List<LayerTile>();
             m_tile_mutex = new Mutex();     
             m_render_target = new RenderTarget();
         }
@@ -130,25 +130,25 @@ namespace SalemMapper
                 tile.GlobalX = tile.LocalX;
                 tile.GlobalY = tile.LocalY;
 
-                MegaSessionTile mst = new MegaSessionTile();
-                mst.CurrentSession = session.Name;
-                mst.GlobalX = tile.GlobalX;
-                mst.GlobalY = tile.GlobalY;
-                mst.LocalX = tile.LocalX;
-                mst.LocalY = tile.LocalY;
-                mst.TileFilePath = tile.TileFilePath;
+                LayerTile lt = new LayerTile();
+                lt.CurrentSession = session.Name;
+                lt.GlobalX = tile.GlobalX;
+                lt.GlobalY = tile.GlobalY;
+                lt.LocalX = tile.LocalX;
+                lt.LocalY = tile.LocalY;
+                lt.TileFilePath = tile.TileFilePath;
 
                 SessionHistoryEntry history_entry = new SessionHistoryEntry();
                 history_entry.SessionX = 0;
                 history_entry.SessionY = 0;
                 history_entry.Session = session.Name;
-                mst.SessionHistory.Add(history_entry);
+                lt.SessionHistory.Add(history_entry);
 
                 //Non serializeable
-                mst.SessionRef = session;
-                mst.SessionTileRef = tile;
+                lt.SessionRef = session;
+                lt.SessionTileRef = tile;
 
-                m_tiles.Add(mst);
+                m_tiles.Add(lt);
             }
         }
 
@@ -209,9 +209,9 @@ namespace SalemMapper
 
             //Make a local copy of the tile list
             m_tile_mutex.WaitOne();
-            MegaSessionTile[] our_tiles = new MegaSessionTile[m_tiles.Count];
+            LayerTile[] our_tiles = new LayerTile[m_tiles.Count];
             int idx = 0;
-            foreach(MegaSessionTile mst in m_tiles)
+            foreach(LayerTile mst in m_tiles)
             {
                 our_tiles[idx++] = mst;
             }
@@ -220,18 +220,18 @@ namespace SalemMapper
             //Match tiles!
             foreach(Tile in_session_tile in in_session.Tiles)
             {
-                foreach(MegaSessionTile megaSessionTile in our_tiles)
+                foreach(LayerTile layer_tile in our_tiles)
                 {
-                    if(Compare(in_session_tile, megaSessionTile.SessionTileRef, 90.0))
+                    if(Compare(in_session_tile, layer_tile.SessionTileRef, 90.0))
                     {
                         //We have a match!
-                        in_session_tile.GlobalX = megaSessionTile.GlobalX;
-                        in_session_tile.GlobalY = megaSessionTile.GlobalY;
+                        in_session_tile.GlobalX = layer_tile.GlobalX;
+                        in_session_tile.GlobalY = layer_tile.GlobalY;
 
                         //if this tile is -1, -2
                         //Then our session global x would be (other_x + (1)) or (other_x - (-1))
-                        session_x = megaSessionTile.GlobalX - in_session_tile.LocalX;
-                        session_y = megaSessionTile.GlobalY - in_session_tile.LocalY;
+                        session_x = layer_tile.GlobalX - in_session_tile.LocalX;
+                        session_y = layer_tile.GlobalY - in_session_tile.LocalY;
 
                         match_tile_x = in_session_tile.LocalX;
                         match_tile_y = in_session_tile.LocalY;
@@ -255,13 +255,13 @@ namespace SalemMapper
                     in_tile.GlobalY = session_y + in_tile.LocalY;
 
                     //Find that tiles in our tiles repo
-                    foreach (MegaSessionTile megaSessionTile in our_tiles)
+                    foreach (LayerTile layer_tile in our_tiles)
                     {
-                        if(in_tile.GlobalX == megaSessionTile.GlobalX &&
-                            in_tile.GlobalY == megaSessionTile.GlobalY)
+                        if(in_tile.GlobalX == layer_tile.GlobalX &&
+                            in_tile.GlobalY == layer_tile.GlobalY)
                         {
                             //Attempt to match this tile to
-                            if(!Compare(in_tile, megaSessionTile.SessionTileRef, 90.0))
+                            if(!Compare(in_tile, layer_tile.SessionTileRef, 90.0))
                             {
                                 return false;
                             }
@@ -276,39 +276,43 @@ namespace SalemMapper
                     tile.GlobalY = session_y + tile.LocalY;
 
                     //T_T
-                    List<MegaSessionTile> to_remove = new List<MegaSessionTile>();
-                    foreach(MegaSessionTile megaSessionTile in m_tiles)
+                    List<LayerTile> to_remove = new List<LayerTile>();
+                    foreach(LayerTile layer_tile in m_tiles)
                     {
-                        if(megaSessionTile.GlobalX == tile.GlobalX &&
-                            megaSessionTile.GlobalY == tile.GlobalY)
+                        if(layer_tile.GlobalX == tile.GlobalX &&
+                            layer_tile.GlobalY == tile.GlobalY)
                         {
-                            to_remove.Add(megaSessionTile);
+                            to_remove.Add(layer_tile);
                         }
                     }
-                    foreach(MegaSessionTile remove_tile in to_remove)
+                    foreach(LayerTile remove_tile in to_remove)
                     {
                         m_tiles.Remove(remove_tile);
                     }
 
-                    MegaSessionTile mst = new MegaSessionTile();
-                    mst.CurrentSession = in_session.Name;
-                    mst.GlobalX = tile.GlobalX;
-                    mst.GlobalY = tile.GlobalY;
-                    mst.LocalX = tile.LocalX;
-                    mst.LocalY = tile.LocalY;
-                    mst.TileFilePath = tile.TileFilePath;
+                    LayerTile lt = new LayerTile();
+                    lt.CurrentSession = in_session.Name;
+                    lt.GlobalX = tile.GlobalX;
+                    lt.GlobalY = tile.GlobalY;
+                    lt.LocalX = tile.LocalX;
+                    lt.LocalY = tile.LocalY;
+                    lt.TileFilePath = tile.TileFilePath;
 
                     SessionHistoryEntry history_entry = new SessionHistoryEntry();
                     history_entry.SessionX = 0;
                     history_entry.SessionY = 0;
-                    mst.SessionHistory.Add(history_entry);
+                    lt.SessionHistory.Add(history_entry);
 
                     //Non serializeable
-                    mst.SessionRef = in_session;
-                    mst.SessionTileRef = tile;
+                    lt.SessionRef = in_session;
+                    lt.SessionTileRef = tile;
 
-                    m_tiles.Add(mst);
+                    m_tiles.Add(lt);
+
+                    //Also save the tile!
+                    Database.SaveTile(0, lt);
                 }
+
                 m_tile_mutex.ReleaseMutex();
             }
 
@@ -336,7 +340,7 @@ namespace SalemMapper
 
             m_tile_mutex.WaitOne();
 
-            foreach (MegaSessionTile t in m_tiles)
+            foreach (LayerTile t in m_tiles)
             {
                 Image image = t.Image;
                 if (image != null)

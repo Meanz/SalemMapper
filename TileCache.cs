@@ -35,7 +35,7 @@ namespace SalemMapper
             {
                 //Make this entry the LRU
                 m_lru_cache.Remove(key);
-                m_lru_cache.AddLast(key);
+                m_lru_cache.AddFirst(key);
             }
 
             return bitmap;
@@ -53,14 +53,15 @@ namespace SalemMapper
             m_dict[key] = bitmap;
 
             //add to lru cache
-            m_lru_cache.AddLast(key);
+            m_lru_cache.AddFirst(key);
 
         }
 
         private void removeLRU()
         {
-            string lru = m_lru_cache.First();
-            m_lru_cache.RemoveFirst();
+            string lru = m_lru_cache.Last();
+            m_lru_cache.RemoveLast();
+
             Bitmap bm = m_dict[lru];
             m_dict.Remove(lru);
             if(Removed != null)
@@ -99,6 +100,44 @@ namespace SalemMapper
             value.Dispose(); //dispose of our item
         }
 
+        public static Bitmap FetchImage(string path)
+        {
+            tile_cache_mutex.WaitOne();
+            Bitmap img = null;
+            {
+                img = lru_cache.Get(path);
+            }
+
+            if (img == null)
+            {
+                img = (Bitmap)Image.FromFile(path);
+
+                if (img == null)
+                {
+                    tile_cache_mutex.ReleaseMutex();
+                    return null;
+                }
+                else
+                {
+                    m_active_bitmaps.Add(img);
+                    lru_cache.Insert(path, img);
+                }
+
+            }
+
+            //Check if this image was disposed somehow.
+            BitmapData bd = null;
+            bitmap_to_bitmap_data.TryGetValue(img, out bd);
+            if (bd == null)
+            {
+                bd = img.LockBits(new Rectangle(0, 0, img.Width, img.Height), ImageLockMode.ReadOnly, img.PixelFormat);
+                bitmap_to_bitmap_data[img] = bd;
+            }
+
+            tile_cache_mutex.ReleaseMutex();
+            return img;
+        }
+
         public static BitmapData FetchImageData(string path)
         {
             tile_cache_mutex.WaitOne();
@@ -110,11 +149,13 @@ namespace SalemMapper
             if (img == null)
             {
                 img = (Bitmap)Image.FromFile(path);
+
                 if (img == null)
                 {
                     tile_cache_mutex.ReleaseMutex();
                     return null;
                 }
+                else
                 {
                     m_active_bitmaps.Add(img);
                     lru_cache.Insert(path, img);

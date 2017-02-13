@@ -35,12 +35,21 @@ namespace SalemMapper
         {
             get
             {
-                if(_cachedFilePath == null)
+                if (_cachedFilePath == null)
                 {
                     _cachedFilePath = Session.Path + "\\tile_" + LocalX + "_" + LocalY + ".png";
                 }
                 return _cachedFilePath;
             }
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <returns></returns>
+        public Bitmap GetBitmap()
+        {
+            return TileCache.FetchImage(TileFilePath);
         }
 
         /// <summary>

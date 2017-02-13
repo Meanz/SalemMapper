@@ -18,8 +18,8 @@ namespace SalemMapper
         private Bitmap m_offscreen_image = null;
         private Graphics m_offscreen_graphics = null;
 
-        private List<MegaSession> m_mega_sessions;
-        private MegaSession m_active_mega_session;
+        private List<Layer> m_mega_sessions;
+        private Layer m_active_mega_session;
         private bool m_running;
         //The list of things to process later
         private LinkedList<Session> m_unprocessed_sessions = null;
@@ -96,7 +96,7 @@ namespace SalemMapper
 
                     //Activate step two!
                     //Wait for all threads to complete!
-                    MegaSession _ms = m_active_mega_session;
+                    Layer _ms = m_active_mega_session;
                     //Memory barrier
                     Interlocked.Increment(ref m_thread_val);
                     while (m_thread_val != m_thread_pool.Count){}
@@ -121,7 +121,7 @@ namespace SalemMapper
                             //Clear process later
                             process_later.Clear();
 
-                            m_active_mega_session = new MegaSession();
+                            m_active_mega_session = new Layer();
                             m_active_mega_session.SetOrigoSession(os);
                             m_mega_sessions.Add(m_active_mega_session);
 
@@ -165,7 +165,7 @@ namespace SalemMapper
         /// </summary>
         public void Analyze()
         {
-            m_active_mega_session = new MegaSession();
+            m_active_mega_session = new Layer();
             m_active_mega_session.SetOrigoSession(m_sessions.First());
             m_mega_sessions.Add(m_active_mega_session);
 
@@ -205,7 +205,7 @@ namespace SalemMapper
             this.DoubleBuffered = true;
             InitializeComponent();
 
-            m_mega_sessions = new List<MegaSession>();
+            m_mega_sessions = new List<Layer>();
             m_active_mega_session = null;
             m_thread_pool = new List<Thread>();
 
@@ -225,6 +225,14 @@ namespace SalemMapper
             pnlMap.MouseDown += PnlMap_MouseDown;
             pnlMap.MouseUp += PnlMap_MouseUp;
             pnlMap.MouseMove += PnlMap_MouseMove;
+
+            //Exit hook
+            Application.ApplicationExit += Application_ApplicationExit;
+        }
+
+        private void Application_ApplicationExit(object sender, EventArgs e)
+        {
+            Database.CloseAll();
         }
 
         private void PnlMap_MouseMove(object sender, MouseEventArgs e)
